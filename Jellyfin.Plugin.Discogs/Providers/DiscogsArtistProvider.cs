@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscogsApiClient;
-using DiscogsApiClient.Authentication;
-using DiscogsApiClient.QueryParameters;
-using Jellyfin.Extensions;
-using Jellyfin.Plugin.Discogs.Configuration;
 using Jellyfin.Plugin.Discogs.ExternalIds;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Providers;
@@ -23,21 +16,15 @@ namespace Jellyfin.Plugin.Discogs.Providers;
 /// </summary>
 public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, ArtistInfo>
 {
-    private readonly IDiscogsApiClient _discogsApiClient;
-    private readonly IDiscogsAuthenticationService _discogsAuthenticationService;
-    private readonly PluginConfiguration _configuration;
+    private readonly DiscogsApi _api;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DiscogsArtistProvider"/> class.
     /// </summary>
-    /// <param name="discogsApiClient">The discogsApiClient.</param>
-    /// <param name="discogsAuthenticationService">The discogsAuthenticationService.</param>
-    /// <param name="configuration">The configuration.</param>
-    public DiscogsArtistProvider(IDiscogsApiClient discogsApiClient, IDiscogsAuthenticationService discogsAuthenticationService, PluginConfiguration configuration)
+    /// <param name="api">The Discogs API.</param>
+    public DiscogsArtistProvider(DiscogsApi api)
     {
-        _discogsApiClient = discogsApiClient;
-        _discogsAuthenticationService = discogsAuthenticationService;
-        _configuration = configuration;
+        _api = api;
     }
 
     /// <inheritdoc />
@@ -46,18 +33,16 @@ public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, Artist
     /// <inheritdoc />
     public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(ArtistInfo searchInfo, CancellationToken cancellationToken)
     {
-        _discogsAuthenticationService.AuthenticateWithPersonalAccessToken(_configuration.ApiToken);
-
         var artistId = searchInfo.GetProviderId(DiscogsArtistExternalId.ProviderKey);
-        if (artistId != null && int.TryParse(artistId, out var artistIdInt))
+        if (artistId != null)
         {
-            var result = await _discogsApiClient.GetArtist(artistIdInt, cancellationToken).ConfigureAwait(false);
-            return new[] { new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result.Id.ToString(CultureInfo.InvariantCulture) }, }, Name = result.Name, ImageUrl = result.Images.FirstOrDefault()?.ImageUri150 } };
+            var result = await _api.GetArtist(artistId, cancellationToken).ConfigureAwait(false);
+            return new[] { new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() }, }, Name = result!["name"]!.ToString(), ImageUrl = result!["images"]!.AsArray().FirstOrDefault()?["uri150"]?.ToString() } };
         }
         else
         {
-            var response = await _discogsApiClient.SearchDatabase(new SearchQueryParameters { Query = searchInfo.Name, Type = "artist", }, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return response.Results.Select(result => new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result.Id.ToString(CultureInfo.InvariantCulture) }, }, Name = result.Title, ImageUrl = result.CoverImageUrl, });
+            var response = await _api.Search(searchInfo.Name, "artist", cancellationToken).ConfigureAwait(false);
+            return response!["results"]!.AsArray().Select(result => new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() }, }, Name = result["title"]!.ToString(), ImageUrl = result!["cover_image_url"]?.ToString(), });
         }
     }
 
@@ -65,17 +50,16 @@ public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, Artist
     public async Task<MetadataResult<MusicArtist>> GetMetadata(ArtistInfo info, CancellationToken cancellationToken)
     {
         var artistId = info.GetProviderId(DiscogsArtistExternalId.ProviderKey);
-        if (artistId != null && int.TryParse(artistId, out var artistIdInt))
+        if (artistId != null)
         {
-            _discogsAuthenticationService.AuthenticateWithPersonalAccessToken(_configuration.ApiToken);
-            var result = await _discogsApiClient.GetArtist(artistIdInt, cancellationToken).ConfigureAwait(false);
+            var result = await _api.GetArtist(artistId, cancellationToken).ConfigureAwait(false);
 
             return new MetadataResult<MusicArtist>
             {
-                Item = new MusicArtist { ProviderIds = new Dictionary<string, string>() { { DiscogsArtistExternalId.ProviderKey, result.Id.ToString(CultureInfo.InvariantCulture) }, }, Name = result.Name, Overview = result.Profile, },
-                RemoteImages = result.Images
-                    .Where(image => image.Type == DiscogsApiClient.Contract.ImageType.Primary)
-                    .Select(image => (image.ImageUri, ImageType.Primary))
+                Item = new MusicArtist { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() } }, Name = result!["name"]!.ToString(), Overview = result!["profile"]!.ToString(), },
+                RemoteImages = result!["images"]!.AsArray()
+                    .Where(image => image!["type"]!.ToString() == "primary")
+                    .Select(image => (image!["uri"]!.ToString(), ImageType.Primary))
                     .ToList(),
                 QueriedById = true,
                 HasMetadata = true,
@@ -86,8 +70,5 @@ public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, Artist
     }
 
     /// <inheritdoc />
-    public Task<HttpResponseMessage> GetImageResponse(string url, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
+    public Task<HttpResponseMessage> GetImageResponse(string url, CancellationToken cancellationToken) => _api.GetImage(url, cancellationToken);
 }
