@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <title>Discogs</title>
+</head>
+<body>
+<div id="discogsConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
+    <div data-role="content">
+        <div class="content-primary">
+            <form class="gotifyConfigurationForm">
+                <div class="verticalSection verticalSection-extrabottompadding">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Discogs Settings:</h2>
+                        <a is="emby-button" class="raised button-alt headerHelpButton" target="_blank"
+                           href="https://github.com/jellyfin/jellyfin-plugin-discogs">${Help}</a>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="txtDiscogsApiToken">TheDiscogs API Token:</label>
+                        <input type="text" id="txtDiscogsApiToken" required="required" is="emby-input"/>
+                        <div class="fieldDescription">
+                            Discogs Api Token
+                        </div>
+                    </div>
+                    <br/>
+                    <div>
+                        <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var DiscogsPluginConfiguration = {
+            uniquePluginId: "4ce89c27-d3a1-4e4b-8f5f-4bd9191c857e",
+
+            loadConfiguration: function () {
+                Dashboard.showLoadingMsg();
+
+                ApiClient.getPluginConfiguration(DiscogsPluginConfiguration.uniquePluginId).then(function (config) {
+                    document.getElementById('txtDiscogsApiToken').value = config.ApiToken || '';
+                    Dashboard.hideLoadingMsg();
+                });
+            },
+
+            saveConfiguration: function () {
+                Dashboard.showLoadingMsg();
+
+                ApiClient.getPluginConfiguration(DiscogsPluginConfiguration.uniquePluginId).then(function (config) {
+                    config.ApiToken = document.getElementById('txtDiscogsApiToken').value;
+
+                    ApiClient.updatePluginConfiguration(DiscogsPluginConfiguration.uniquePluginId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+            },
+        };
+
+        document.getElementById('discogsConfigurationPage').addEventListener('pageshow', function () {
+            DiscogsPluginConfiguration.loadConfiguration();
+        });
+
+        document.getElementById('discogsConfigurationPage').addEventListener('submit', function (e) {
+            e.preventDefault();
+            DiscogsPluginConfiguration.saveConfiguration();
+        });
+    </script>
+</div>
+</body>
+</html>
