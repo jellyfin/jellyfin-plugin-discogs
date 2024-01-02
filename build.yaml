@@ -11,5 +11,6 @@ category: "Metadata"
 owner: "jellyfin"
 artifacts:
   - "Jellyfin.Plugin.Discogs.dll"
+  - "DiscogsApiClient.dll"
 changelog: >
   - Initial release

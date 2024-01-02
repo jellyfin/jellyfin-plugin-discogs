@@ -11,8 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.8.0" />
-    <PackageReference Include="Jellyfin.Model" Version="10.8.0" />
+    <PackageReference Include="DiscogsApiClient" Version="4.0.0" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.8.13" />
+    <PackageReference Include="Jellyfin.Model" Version="10.8.13" />
   </ItemGroup>
 
   <ItemGroup>

@@ -10,11 +10,16 @@ namespace Jellyfin.Plugin.Discogs.ExternalIds;
 /// </summary>
 public class DiscogsArtistExternalId : IExternalId
 {
+    /// <summary>
+    /// The key.
+    /// </summary>
+    public const string ProviderKey = "DiscogsArtist";
+
     /// <inheritdoc />
     public string ProviderName => "Discogs";
 
     /// <inheritdoc />
-    public string Key => "DiscogsArtist";
+    public string Key => ProviderKey;
 
     /// <inheritdoc />
     public ExternalIdMediaType? Type => ExternalIdMediaType.Artist;
