@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.Discogs;
 #pragma warning disable CS1591
 public class DiscogsApi
 {
-    private const string Server = "https://api.discogs.com/";
+    private readonly PluginConfiguration _configuration;
     private readonly HttpClient _client;
 
     public DiscogsApi(IHttpClientFactory clientFactory) : this(clientFactory, Plugin.Instance!.Configuration)
@@ -26,35 +26,59 @@ public class DiscogsApi
     public DiscogsApi(IHttpClientFactory clientFactory, PluginConfiguration configuration)
     {
         _client = clientFactory.CreateClient(NamedClient.Default);
+        _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance!.Version.ToString()));
+        _configuration = configuration;
+    }
 
-        // TODO: This doesn't update the token when configuration changes
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Discogs", $"token={configuration.ApiToken}");
+    private void AddRequestHeaders(HttpRequestMessage request)
+    {
+        // Remove default accept headers and add the Discogs specific one
+        request.Headers.Accept.Clear();
+        switch (_configuration.TextFormat)
+        {
+            default:
+            case DiscogsTextFormat.PlainText:
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.discogs.v2.plaintext+json", 1.0));
+                break;
+            case DiscogsTextFormat.Html:
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.discogs.v2.html+json", 1.0));
+                break;
+        }
+
+        // Authorize request
+        request.Headers.Authorization = new AuthenticationHeaderValue("Discogs", $"token={_configuration.ApiToken}");
     }
 
     public async Task<JsonNode?> GetArtist(string id, CancellationToken cancellationToken)
     {
-        var uri = new Uri($"{Server}artists/{HttpUtility.UrlEncode(id)}");
-        var response = await _client.GetAsync(uri, cancellationToken).ConfigureAwait(false);
+        var uri = new Uri($"{_configuration.ApiServer}artists/{HttpUtility.UrlEncode(id)}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        AddRequestHeaders(request);
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<JsonNode?> Search(string query, string? type, CancellationToken cancellationToken)
     {
-        var uri = new Uri(QueryHelpers.AddQueryString($"{Server}database/search", new Dictionary<string, string?> { { "q", query }, { "type", type } }));
-        var response = await _client.GetAsync(uri, cancellationToken).ConfigureAwait(false);
+        var uri = new Uri(QueryHelpers.AddQueryString($"{_configuration.ApiServer}database/search", new Dictionary<string, string?> { { "q", query }, { "type", type } }));
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        AddRequestHeaders(request);
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<HttpResponseMessage> GetImage(string url, CancellationToken cancellationToken)
     {
-        if (!url.StartsWith(Server, StringComparison.Ordinal))
+        if (new Uri(url).Host != new Uri(_configuration.ImageServer).Host)
         {
-            throw new ArgumentException($"URL does not start with {Server}", nameof(url));
+            throw new ArgumentException($"Host does not match {_configuration.ImageServer}", nameof(url));
         }
 
-        var response = await _client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddRequestHeaders(request);
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return response;
     }

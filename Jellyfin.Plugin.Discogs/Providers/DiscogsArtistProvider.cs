@@ -56,9 +56,9 @@ public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, Artist
 
             return new MetadataResult<MusicArtist>
             {
-                Item = new MusicArtist { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() } }, Name = result!["name"]!.ToString(), Overview = result!["profile"]!.ToString(), },
-                RemoteImages = result!["images"]!.AsArray()
-                    .Where(image => image!["type"]!.ToString() == "primary")
+                Item = new MusicArtist { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() } }, Name = result!["name"]!.ToString(), Overview = result!["profile_html"]?.ToString() ?? result!["profile_plaintext"]?.ToString() ?? result!["profile"]?.ToString(), },
+                RemoteImages = result["images"]?.AsArray()
+                    .Where(image => image!["type"]!.ToString() == "primary" && image!["uri"]!.ToString().Length > 0)
                     .Select(image => (image!["uri"]!.ToString(), ImageType.Primary))
                     .ToList(),
                 QueriedById = true,
