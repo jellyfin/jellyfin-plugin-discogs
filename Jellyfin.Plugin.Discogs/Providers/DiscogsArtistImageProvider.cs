@@ -29,10 +29,10 @@ public class DiscogsArtistImageProvider : IRemoteImageProvider
     }
 
     /// <inheritdoc />
-    public string Name => nameof(DiscogsArtistImageProvider);
+    public string Name => Plugin.Instance!.Name;
 
     /// <inheritdoc />
-    public bool Supports(BaseItem item) => item is MusicArtist;
+    public bool Supports(BaseItem item) => item.GetProviderId(DiscogsArtistExternalId.ProviderKey) != null;
 
     /// <inheritdoc />
     public IEnumerable<ImageType> GetSupportedImages(BaseItem item) => new[] { ImageType.Primary };
@@ -48,13 +48,13 @@ public class DiscogsArtistImageProvider : IRemoteImageProvider
             if (result?["images"] != null)
             {
                 return result!["images"]!.AsArray()
-                    .Where(image => image!["type"]!.ToString() == "primary" && image!["uri"]!.ToString().Length > 0)
+                    .Where(image => image!["uri"]!.ToString().Length > 0)
                     .Select(image => new RemoteImageInfo()
                     {
                         Url = image!["uri"]!.ToString(),
                         ProviderName = Name,
                         Type = ImageType.Primary,
-                        ThumbnailUrl = image!["uri150"]!.ToString(),
+                        ThumbnailUrl = image["uri150"]!.ToString(),
                         Width = image["width"]?.Deserialize<int>(),
                         Height = image["height"]?.Deserialize<int>()
                     });
