@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -42,7 +43,24 @@ public class DiscogsArtistProvider : IRemoteMetadataProvider<MusicArtist, Artist
         else
         {
             var response = await _api.Search(searchInfo.Name, "artist", cancellationToken).ConfigureAwait(false);
-            return response!["results"]!.AsArray().Select(result => new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() }, }, Name = result["title"]!.ToString(), ImageUrl = result!["cover_image_url"]?.ToString(), });
+            return response!["results"]!.AsArray().Select(result =>
+            {
+                var searchResult = new RemoteSearchResult();
+                searchResult.ProviderIds = new Dictionary<string, string> { { DiscogsArtistExternalId.ProviderKey, result!["id"]!.ToString() }, };
+                if (result["master_id"] != null && result["master_url"] != null)
+                {
+                    searchResult.ProviderIds.Add(DiscogsMasterExternalId.ProviderKey, result["master_id"]!.ToString());
+                }
+
+                searchResult.Name = result["title"]!.ToString();
+                searchResult.ImageUrl = result!["thumb"]?.ToString() ?? result!["cover_image_url"]?.ToString();
+                if (result["year"] != null)
+                {
+                    searchResult.ProductionYear = int.Parse(result["year"]!.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture);
+                }
+
+                return searchResult;
+            });
         }
     }
 
