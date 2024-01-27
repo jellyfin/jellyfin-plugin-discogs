@@ -13,7 +13,7 @@ public class DiscogsMasterExternalId : IExternalId
     /// <summary>
     /// The key.
     /// </summary>
-    public const string ProviderKey = "DiscogsRelease";
+    public const string ProviderKey = "DiscogsMaster";
 
     /// <inheritdoc />
     public string ProviderName => "Discogs";
