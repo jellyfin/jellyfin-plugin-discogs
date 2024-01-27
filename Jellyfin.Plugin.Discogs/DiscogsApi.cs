@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -57,10 +58,13 @@ public class DiscogsApi
 
         // TODO: Implement code to deal with rate limiting (https://www.discogs.com/developers/#page:home,header:home-rate-limiting)
         // Note: The image server does NOT return these headers
+        response.Headers.TryGetValues("X-Discogs-Ratelimit", out var rateLimit);
+        response.Headers.TryGetValues("X-Discogs-Ratelimit-Used", out var rateLimitUsed);
+        response.Headers.TryGetValues("X-Discogs-Ratelimit-Remaining", out var rateLimitRemaining);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
-            _logger.LogWarning("It looks like we are rate limited.");
+            _logger.LogWarning("It looks like we are rate limited. RateLimit={0}, RateLimitUsed={1}, RateLimitRemaining={2}", rateLimit?.FirstOrDefault(), rateLimitUsed?.FirstOrDefault(), rateLimitRemaining?.FirstOrDefault());
         }
 
         // Check for correct status before returning response
