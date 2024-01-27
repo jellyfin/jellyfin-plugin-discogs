@@ -59,6 +59,26 @@ public class DiscogsApi
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<JsonNode?> GetRelease(string id, CancellationToken cancellationToken)
+    {
+        var uri = new Uri($"{_configuration.ApiServer}releases/{HttpUtility.UrlEncode(id)}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        AddRequestHeaders(request);
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<JsonNode?> GetMaster(string id, CancellationToken cancellationToken)
+    {
+        var uri = new Uri($"{_configuration.ApiServer}masters/{HttpUtility.UrlEncode(id)}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        AddRequestHeaders(request);
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<JsonNode?> Search(string query, string? type, CancellationToken cancellationToken)
     {
         var uri = new Uri(QueryHelpers.AddQueryString($"{_configuration.ApiServer}database/search", new Dictionary<string, string?> { { "q", query }, { "type", type } }));
