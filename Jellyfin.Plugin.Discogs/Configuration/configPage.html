@@ -10,15 +10,23 @@
             <form class="gotifyConfigurationForm">
                 <div class="verticalSection verticalSection-extrabottompadding">
                     <div class="sectionTitleContainer flex align-items-center">
-                        <h2 class="sectionTitle">Discogs Settings:</h2>
-                        <a is="emby-button" class="raised button-alt headerHelpButton" target="_blank"
-                           href="https://github.com/jellyfin/jellyfin-plugin-discogs">${Help}</a>
+                        <h2 class="sectionTitle">Discogs</h2>
                     </div>
                     <div class="inputContainer">
-                        <label for="txtDiscogsApiToken">TheDiscogs API Token:</label>
+                        <label for="txtDiscogsApiToken">Discogs personal access token</label>
                         <input type="text" id="txtDiscogsApiToken" required="required" is="emby-input"/>
                         <div class="fieldDescription">
-                            Discogs Api Token
+                            Create your own token in the <a class="button-link emby-button" target="_blank" href="https://www.discogs.com/settings/developers">Discogs developer page</a>.
+                        </div>
+                    </div>
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="selectDiscogsFormat">Description markup</label>
+                        <select is="emby-select" id="selectDiscogsFormat" label="Description markup" class="emby-select-withcolor emby-select">
+                            <option value="Html">HTML</option>
+                            <option value="PlainText">Plaintext</option>
+                        </select>
+                        <div class="selectArrowContainer">
+                            <span class="selectArrow material-icons keyboard_arrow_down" aria-hidden="true"></span>
                         </div>
                     </div>
                     <br/>
@@ -40,6 +48,7 @@
 
                 ApiClient.getPluginConfiguration(DiscogsPluginConfiguration.uniquePluginId).then(function (config) {
                     document.getElementById('txtDiscogsApiToken').value = config.ApiToken || '';
+                    document.getElementById('selectDiscogsFormat').value = config.TextFormat || '';
                     Dashboard.hideLoadingMsg();
                 });
             },
@@ -49,6 +58,7 @@
 
                 ApiClient.getPluginConfiguration(DiscogsPluginConfiguration.uniquePluginId).then(function (config) {
                     config.ApiToken = document.getElementById('txtDiscogsApiToken').value;
+                    config.TextFormat = document.getElementById('selectDiscogsFormat').value;
 
                     ApiClient.updatePluginConfiguration(DiscogsPluginConfiguration.uniquePluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
