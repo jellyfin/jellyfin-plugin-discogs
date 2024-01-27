@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -10,27 +11,30 @@ using System.Web;
 using Jellyfin.Plugin.Discogs.Configuration;
 using MediaBrowser.Common.Net;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Discogs;
 
 #pragma warning disable CS1591
 public class DiscogsApi
 {
+    private readonly ILogger<DiscogsApi> _logger;
     private readonly PluginConfiguration _configuration;
     private readonly HttpClient _client;
 
-    public DiscogsApi(IHttpClientFactory clientFactory) : this(clientFactory, Plugin.Instance!.Configuration)
+    public DiscogsApi(IHttpClientFactory clientFactory, ILogger<DiscogsApi> logger) : this(clientFactory, logger, Plugin.Instance!.Configuration)
     {
     }
 
-    public DiscogsApi(IHttpClientFactory clientFactory, PluginConfiguration configuration)
+    public DiscogsApi(IHttpClientFactory clientFactory, ILogger<DiscogsApi> logger, PluginConfiguration configuration)
     {
         _client = clientFactory.CreateClient(NamedClient.Default);
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance!.Version.ToString()));
+        _logger = logger;
         _configuration = configuration;
     }
 
-    private void AddRequestHeaders(HttpRequestMessage request)
+    private async Task<HttpResponseMessage> Request(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         // Remove default accept headers and add the Discogs specific one
         request.Headers.Accept.Clear();
@@ -47,15 +51,28 @@ public class DiscogsApi
 
         // Authorize request
         request.Headers.Authorization = new AuthenticationHeaderValue("Discogs", $"token={_configuration.ApiToken}");
+
+        // Do actual request
+        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        // TODO: Implement code to deal with rate limiting (https://www.discogs.com/developers/#page:home,header:home-rate-limiting)
+        // Note: The image server does NOT return these headers
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            _logger.LogWarning("It looks like we are rate limited.");
+        }
+
+        // Check for correct status before returning response
+        response.EnsureSuccessStatusCode();
+        return response;
     }
 
     public async Task<JsonNode?> GetArtist(string id, CancellationToken cancellationToken)
     {
         var uri = new Uri($"{_configuration.ApiServer}artists/{HttpUtility.UrlEncode(id)}");
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        AddRequestHeaders(request);
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -63,9 +80,7 @@ public class DiscogsApi
     {
         var uri = new Uri($"{_configuration.ApiServer}releases/{HttpUtility.UrlEncode(id)}");
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        AddRequestHeaders(request);
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -73,9 +88,7 @@ public class DiscogsApi
     {
         var uri = new Uri($"{_configuration.ApiServer}masters/{HttpUtility.UrlEncode(id)}");
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        AddRequestHeaders(request);
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -83,9 +96,7 @@ public class DiscogsApi
     {
         var uri = new Uri(QueryHelpers.AddQueryString($"{_configuration.ApiServer}database/search", new Dictionary<string, string?> { { "q", query }, { "type", type } }));
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        AddRequestHeaders(request);
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<JsonNode>(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -97,9 +108,7 @@ public class DiscogsApi
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        AddRequestHeaders(request);
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return response;
     }
 }
