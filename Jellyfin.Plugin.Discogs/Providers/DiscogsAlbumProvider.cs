@@ -35,9 +35,16 @@ public class DiscogsAlbumProvider : IRemoteMetadataProvider<MusicAlbum, AlbumInf
     public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(AlbumInfo searchInfo, CancellationToken cancellationToken)
     {
         var releaseId = searchInfo.GetProviderId(DiscogsReleaseExternalId.ProviderKey);
+        var masterId = searchInfo.GetProviderId(DiscogsMasterExternalId.ProviderKey);
+
         if (releaseId != null)
         {
             var result = await _api.GetRelease(releaseId, cancellationToken).ConfigureAwait(false);
+            return new[] { new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsReleaseExternalId.ProviderKey, result!["id"]!.ToString() }, }, Name = result["title"]!.ToString(), ImageUrl = result["thumb"]!.AsArray().FirstOrDefault()?["uri150"]?.ToString() } };
+        }
+        else if (masterId != null)
+        {
+            var result = await _api.GetMaster(masterId, cancellationToken).ConfigureAwait(false);
             return new[] { new RemoteSearchResult { ProviderIds = new Dictionary<string, string> { { DiscogsReleaseExternalId.ProviderKey, result!["id"]!.ToString() }, }, Name = result["title"]!.ToString(), ImageUrl = result["thumb"]!.AsArray().FirstOrDefault()?["uri150"]?.ToString() } };
         }
         else
