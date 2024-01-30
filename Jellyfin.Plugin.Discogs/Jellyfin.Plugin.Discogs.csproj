@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="10.8.13" />
     <PackageReference Include="Jellyfin.Model" Version="10.8.13" />
+    <PackageReference Include="System.Threading.RateLimiting" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

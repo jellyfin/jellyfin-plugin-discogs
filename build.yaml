@@ -12,5 +12,6 @@ category: "Metadata"
 owner: "jellyfin"
 artifacts:
   - "Jellyfin.Plugin.Discogs.dll"
+  - "System.Threading.RateLimiting.dll"
 changelog: >
   - Initial release

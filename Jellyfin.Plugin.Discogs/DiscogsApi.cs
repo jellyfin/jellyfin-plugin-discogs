@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
+using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using System.Web;
 using Jellyfin.Plugin.Discogs.Configuration;
@@ -17,11 +18,14 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.Discogs;
 
 #pragma warning disable CS1591
-public class DiscogsApi
+public sealed class DiscogsApi : IDisposable
 {
     private readonly ILogger<DiscogsApi> _logger;
     private readonly PluginConfiguration _configuration;
     private readonly HttpClient _client;
+
+    // Discogs allows 60 requests per minute when authenticated, we'll use 1 request per second instead.
+    private readonly FixedWindowRateLimiter _rateLimiter = new(new FixedWindowRateLimiterOptions { Window = TimeSpan.FromSeconds(1), PermitLimit = 1, QueueLimit = 1000 });
 
     public DiscogsApi(IHttpClientFactory clientFactory, ILogger<DiscogsApi> logger) : this(clientFactory, logger, Plugin.Instance!.Configuration)
     {
@@ -30,13 +34,20 @@ public class DiscogsApi
     public DiscogsApi(IHttpClientFactory clientFactory, ILogger<DiscogsApi> logger, PluginConfiguration configuration)
     {
         _client = clientFactory.CreateClient(NamedClient.Default);
-        _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance!.Version.ToString()));
+        _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance.Version.ToString()));
         _logger = logger;
         _configuration = configuration;
     }
 
     private async Task<HttpResponseMessage> Request(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false);
+        if (!lease.IsAcquired)
+        {
+            _logger.LogWarning("Rate limiter is overloaded!!");
+            return new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        }
+
         // Remove default accept headers and add the Discogs specific one
         request.Headers.Accept.Clear();
         switch (_configuration.TextFormat)
@@ -56,14 +67,13 @@ public class DiscogsApi
         // Do actual request
         var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        // TODO: Implement code to deal with rate limiting (https://www.discogs.com/developers/#page:home,header:home-rate-limiting)
-        // Note: The image server does NOT return these headers
-        response.Headers.TryGetValues("X-Discogs-Ratelimit", out var rateLimit);
-        response.Headers.TryGetValues("X-Discogs-Ratelimit-Used", out var rateLimitUsed);
-        response.Headers.TryGetValues("X-Discogs-Ratelimit-Remaining", out var rateLimitRemaining);
-
+        // Realistically this shouldn't happen
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
+            // Note: The image server does NOT return these headers
+            response.Headers.TryGetValues("X-Discogs-Ratelimit", out var rateLimit);
+            response.Headers.TryGetValues("X-Discogs-Ratelimit-Used", out var rateLimitUsed);
+            response.Headers.TryGetValues("X-Discogs-Ratelimit-Remaining", out var rateLimitRemaining);
             _logger.LogWarning("It looks like we are rate limited. RateLimit={0}, RateLimitUsed={1}, RateLimitRemaining={2}", rateLimit?.FirstOrDefault(), rateLimitUsed?.FirstOrDefault(), rateLimitRemaining?.FirstOrDefault());
         }
 
@@ -114,5 +124,11 @@ public class DiscogsApi
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         var response = await Request(request, cancellationToken).ConfigureAwait(false);
         return response;
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        _rateLimiter.Dispose();
     }
 }
