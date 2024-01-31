@@ -17,4 +17,4 @@ jobs:
     with:
       repository-name: jellyfin/jellyfin-plugin-discogs
     secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+      token: ${{ secrets.JF_BOT_TOKEN }}
