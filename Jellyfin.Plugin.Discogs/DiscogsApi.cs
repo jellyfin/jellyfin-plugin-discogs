@@ -20,9 +20,10 @@ namespace Jellyfin.Plugin.Discogs;
 #pragma warning disable CS1591
 public sealed class DiscogsApi : IDisposable
 {
+    private readonly ProductInfoHeaderValue _pluginUserAgent;
+    private readonly IHttpClientFactory _clientFactory;
     private readonly ILogger<DiscogsApi> _logger;
     private readonly PluginConfiguration _configuration;
-    private readonly HttpClient _client;
 
     // Discogs allows 60 requests per minute when authenticated, we'll use 1 request per second instead.
     private readonly FixedWindowRateLimiter _rateLimiter = new(new FixedWindowRateLimiterOptions { Window = TimeSpan.FromSeconds(1), PermitLimit = 1, QueueLimit = 1000 });
@@ -33,8 +34,8 @@ public sealed class DiscogsApi : IDisposable
 
     public DiscogsApi(IHttpClientFactory clientFactory, ILogger<DiscogsApi> logger, PluginConfiguration configuration)
     {
-        _client = clientFactory.CreateClient(NamedClient.Default);
-        _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance.Version.ToString()));
+        _pluginUserAgent = new ProductInfoHeaderValue(Plugin.Instance!.Name, Plugin.Instance.Version.ToString());
+        _clientFactory = clientFactory;
         _logger = logger;
         _configuration = configuration;
     }
@@ -63,9 +64,10 @@ public sealed class DiscogsApi : IDisposable
 
         // Authorize request
         request.Headers.Authorization = new AuthenticationHeaderValue("Discogs", $"token={_configuration.ApiToken}");
+        request.Headers.UserAgent.Add(_pluginUserAgent);
 
         // Do actual request
-        var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        var response = await _clientFactory.CreateClient(NamedClient.Default).SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         // Realistically this shouldn't happen
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -128,7 +130,6 @@ public sealed class DiscogsApi : IDisposable
 
     public void Dispose()
     {
-        _client.Dispose();
         _rateLimiter.Dispose();
     }
 }
