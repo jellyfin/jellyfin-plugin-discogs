@@ -1,4 +1,5 @@
-﻿using MediaBrowser.Common.Plugins;
+﻿using MediaBrowser.Controller;
+using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Plugin.Discogs;
@@ -7,8 +8,8 @@ namespace Jellyfin.Plugin.Discogs;
 public class PluginServiceRegistrator : IPluginServiceRegistrator
 {
     /// <inheritdoc />
-    public void RegisterServices(IServiceCollection serviceCollection)
+    public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
-        serviceCollection.AddSingleton<DiscogsApi>();
+        throw new System.NotImplementedException();
     }
 }
