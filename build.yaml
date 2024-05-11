@@ -2,14 +2,18 @@
 name: "Discogs"
 guid: "4ce89c27-d3a1-4e4b-8f5f-4bd9191c857e"
 imageUrl: "https://repo.jellyfin.org/releases/plugin/images/jellyfin-plugin-discogs.png"
-version: "1"
+version: "1.0.0"
 targetAbi: "10.9.0.0"
 framework: "net8.0"
 overview: "Get music metadata from Discogs"
 description: >
   Get music metadata from Discogs
+
 category: "Metadata"
 owner: "jellyfin"
 artifacts:
   - "Jellyfin.Plugin.Discogs.dll"
-changelog: >
+changelog: |-
+  - 10.9 (#7) @crobibero
+  - Update dependency StyleCop.Analyzers to v1.2.0-beta.556 (#1) @renovate
+  - Update workflows (#3) @crobibero
