@@ -8,8 +8,12 @@ framework: "net8.0"
 overview: "Get music metadata from Discogs"
 description: >
   Get music metadata from Discogs
+
 category: "Metadata"
 owner: "jellyfin"
 artifacts:
   - "Jellyfin.Plugin.Discogs.dll"
-changelog: >
+changelog: |-
+  - 10.9 (#7) @crobibero
+  - Update dependency StyleCop.Analyzers to v1.2.0-beta.556 (#1) @renovate
+  - Update workflows (#3) @crobibero
