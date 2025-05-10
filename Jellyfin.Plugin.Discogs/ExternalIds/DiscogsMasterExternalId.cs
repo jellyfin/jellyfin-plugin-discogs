@@ -25,8 +25,5 @@ public class DiscogsMasterExternalId : IExternalId
     public ExternalIdMediaType? Type => ExternalIdMediaType.Album;
 
     /// <inheritdoc />
-    public string UrlFormatString => "https://www.discogs.com/master/{0}";
-
-    /// <inheritdoc />
     public bool Supports(IHasProviderIds item) => item is Audio || item is MusicAlbum;
 }

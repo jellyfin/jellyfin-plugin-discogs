@@ -25,8 +25,5 @@ public class DiscogsReleaseExternalId : IExternalId
     public ExternalIdMediaType? Type => ExternalIdMediaType.ReleaseGroup;
 
     /// <inheritdoc />
-    public string UrlFormatString => "https://www.discogs.com/release/{0}";
-
-    /// <inheritdoc />
     public bool Supports(IHasProviderIds item) => item is Audio || item is MusicAlbum;
 }
