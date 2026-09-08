@@ -2,7 +2,7 @@
 name: "Discogs"
 guid: "4ce89c27-d3a1-4e4b-8f5f-4bd9191c857e"
 imageUrl: "https://repo.jellyfin.org/releases/plugin/images/jellyfin-plugin-discogs.png"
-version: 2
+version: 3
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Get music metadata from Discogs"
@@ -14,4 +14,8 @@ owner: "jellyfin"
 artifacts:
   - "Jellyfin.Plugin.Discogs.dll"
 changelog: |-
-  - Jellyfin 10.11 support (#15) @crobibero
+  - Unstable: Update to latest Jellyfin preview packages (#22) @crobibero, @jellyfin-bot
+  - Revert "Update dependency System.Threading.RateLimiting to v10" (#18) @Shadowghost
+
+  ### Dependency updates ###
+  - Update dependency System.Threading.RateLimiting to v10 (#11) [@renovate[bot]](https://github.com/apps/renovate)
